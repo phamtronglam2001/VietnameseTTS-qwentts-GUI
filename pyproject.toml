@@ -1,0 +1,20 @@
+[project]
+name = "vietnamese-tts-gwentts-gui"
+version = "0.1.0"
+description = "Local portable Gwen-TTS GUI for Vietnamese TTS voice cloning"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+  "huggingface_hub>=0.23.0",
+  "numpy>=1.26",
+  "qwen-tts>=0.2.0",
+  "requests>=2.31.0",
+  "safetensors>=0.4.0",
+  "soundfile>=0.12.1",
+  "torch",
+  "transformers>=4.41.0",
+  "gradio>=4.0.0",
+]
+
+[tool.uv]
+dev-dependencies = []
+

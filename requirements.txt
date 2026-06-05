@@ -1,0 +1,14 @@
+huggingface_hub>=0.23.0
+numpy>=1.26
+qwen-tts>=0.2.0
+requests>=2.31.0
+safetensors>=0.4.0
+soundfile>=0.12.1
+transformers>=4.41.0
+gradio>=4.0.0
+
+# NOTE:
+# Install PyTorch separately to match your CUDA setup (or CPU-only).
+# For the recommended uv-based install, use install_uv_windows.bat.
+torch
+

@@ -4,7 +4,6 @@ setlocal
 REM Portable Hugging Face cache inside this project folder.
 set "ROOT=%~dp0"
 set "HF_HOME=%ROOT%.hf_cache"
-set "TRANSFORMERS_CACHE=%HF_HOME%\transformers"
 set "HF_HUB_CACHE=%HF_HOME%\hub"
 
 echo Starting Gwen-TTS Web GUI...

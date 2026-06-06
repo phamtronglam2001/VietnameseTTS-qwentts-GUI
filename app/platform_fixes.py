@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import contextlib
 import logging
+import os
 import shutil
 import sys
 import types
+import warnings
+from pathlib import Path
 from typing import Optional
 
 _SOX_SHIM_INSTALLED = False
@@ -68,6 +72,52 @@ def apply_sox_compat() -> bool:
     return False
 
 
+def apply_hf_env() -> None:
+    """Use ``HF_HOME`` / ``HF_HUB_CACHE`` and drop deprecated ``TRANSFORMERS_CACHE``."""
+    legacy_cache = os.environ.get("TRANSFORMERS_CACHE")
+    hf_home = os.environ.get("HF_HOME")
+
+    if not hf_home and legacy_cache:
+        os.environ["HF_HOME"] = str(Path(legacy_cache).parent)
+
+    hf_home = os.environ.get("HF_HOME")
+    if hf_home:
+        root = Path(hf_home)
+        root.mkdir(parents=True, exist_ok=True)
+        os.environ.setdefault("HF_HUB_CACHE", str(root / "hub"))
+
+    # transformers>=4.46 warns when TRANSFORMERS_CACHE is set; HF_HOME is canonical.
+    if legacy_cache:
+        os.environ.pop("TRANSFORMERS_CACHE", None)
+
+
+def apply_warning_filters() -> None:
+    warnings.filterwarnings(
+        "ignore",
+        message=".*TRANSFORMERS_CACHE.*",
+        category=FutureWarning,
+    )
+
+
+def apply_logging_quiet() -> None:
+    """Reduce noisy but harmless transformers / asyncio messages during TTS runs."""
+    for name in (
+        "transformers",
+        "transformers.generation",
+        "transformers.generation.utils",
+        "transformers.generation.configuration_utils",
+    ):
+        logging.getLogger(name).setLevel(logging.ERROR)
+    logging.getLogger("asyncio").setLevel(logging.CRITICAL)
+
+
+def _asyncio_exception_handler(loop, context) -> None:
+    exc = context.get("exception")
+    if isinstance(exc, ConnectionResetError):
+        return
+    loop.default_exception_handler(context)
+
+
 def apply_windows_asyncio_fix() -> None:
     """Avoid noisy ProactorEventLoop disconnect tracebacks on Windows."""
     if not sys.platform.startswith("win"):
@@ -78,6 +128,13 @@ def apply_windows_asyncio_fix() -> None:
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     except AttributeError:
         pass
+
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    loop.set_exception_handler(_asyncio_exception_handler)
 
 
 def sox_status_line() -> str:
@@ -91,10 +148,38 @@ def sox_status_line() -> str:
     )
 
 
+@contextlib.contextmanager
+def suppress_qwen_import_noise():
+    """
+    Mute one-shot ``qwen_tts`` import prints when flash-attn is absent.
+
+    The upstream package prints to stdout on import; sdpa remains the fallback.
+    """
+    try:
+        import flash_attn  # noqa: F401
+
+        yield
+        return
+    except Exception:
+        pass
+
+    devnull = open(os.devnull, "w", encoding="utf-8")
+    saved = sys.stdout
+    sys.stdout = devnull
+    try:
+        yield
+    finally:
+        sys.stdout = saved
+        devnull.close()
+
+
 def apply_platform_fixes() -> None:
     global _FIXES_APPLIED
     if _FIXES_APPLIED:
         return
+    apply_hf_env()
+    apply_warning_filters()
     apply_windows_asyncio_fix()
     apply_sox_compat()
+    apply_logging_quiet()
     _FIXES_APPLIED = True

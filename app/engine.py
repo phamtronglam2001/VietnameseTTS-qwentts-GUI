@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, List, Optional
 
-from .platform_fixes import apply_platform_fixes
+from .platform_fixes import apply_platform_fixes, suppress_qwen_import_noise
 
 apply_platform_fixes()
 
@@ -57,21 +57,23 @@ class GenerationParams:
     def to_generate_kwargs(self) -> dict:
         # UI sliders may pass whole numbers as int; transformers requires real float
         # instances for repetition_penalty (RepetitionPenaltyLogitsProcessor).
-        kwargs = dict(
-            temperature=float(self.temperature),
-            top_k=int(self.top_k),
-            top_p=float(self.top_p),
-            max_new_tokens=int(self.max_new_tokens),
-            repetition_penalty=float(self.repetition_penalty),
-            subtalker_temperature=float(self.subtalker_temperature),
-            subtalker_top_k=int(self.subtalker_top_k),
-            subtalker_top_p=float(self.subtalker_top_p),
-        )
+        kwargs: dict = {
+            "max_new_tokens": int(self.max_new_tokens),
+            "repetition_penalty": float(self.repetition_penalty),
+        }
         if self.deterministic:
             kwargs["do_sample"] = False
             kwargs["subtalker_dosample"] = False
         else:
             kwargs["subtalker_dosample"] = True
+            kwargs.update(
+                temperature=float(self.temperature),
+                top_k=int(self.top_k),
+                top_p=float(self.top_p),
+                subtalker_temperature=float(self.subtalker_temperature),
+                subtalker_top_k=int(self.subtalker_top_k),
+                subtalker_top_p=float(self.subtalker_top_p),
+            )
         return kwargs
 
 
@@ -190,7 +192,8 @@ def add_builtin_speaker(
 
 
 def load_model(model_dir: Path, device: str) -> "Qwen3TTSModel":
-    from qwen_tts import Qwen3TTSModel
+    with suppress_qwen_import_noise():
+        from qwen_tts import Qwen3TTSModel
 
     attn_impl = pick_attn_implementation()
 

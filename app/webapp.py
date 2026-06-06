@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
-from .platform_fixes import apply_platform_fixes, sox_status_line
+from .platform_fixes import apply_platform_fixes, apply_windows_asyncio_fix, sox_status_line
 
 apply_platform_fixes()
 
@@ -917,6 +917,7 @@ def build_ui() -> gr.Blocks:
 
 
 def main() -> None:
+    apply_windows_asyncio_fix()
     demo = build_ui()
     demo.queue(default_concurrency_limit=1)
     demo.launch(

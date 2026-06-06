@@ -7,9 +7,7 @@ from tkinter import BOTH, END, LEFT, RIGHT, TOP, X, Y, filedialog, messagebox
 import tkinter as tk
 from tkinter import ttk
 
-from .platform_fixes import apply_platform_fixes, sox_status_line
-
-apply_platform_fixes()
+from .platform_fixes import sox_status_line
 
 from .bootstrap import bootstrap_all
 from .engine import (
